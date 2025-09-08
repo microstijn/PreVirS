@@ -8,9 +8,9 @@ graph TD
     end
 
     subgraph "Our contribution (modeling)"
-        C["<b>Hydrodynamic Model</b><br>Simulate water movement<br>using WP1 data."]
-        D["<b>Water Quality Model</b><br>Simulate virus fate & transport<br>using WP3 data."]
-        E["<b>Shellfish Module</b><br>Simulate virus bioaccumulation,<br>validated with WP2 data."]
+        C["<b>Hydrodynamic model</b><br>Simulate water movement<br>using WP1 data."]
+        D["<b>Water Quality model</b><br>Simulate virus fate & transport<br>using WP3 data."]
+        E["<b>Shellfish module</b><br>Simulate virus bioaccumulation,<br>validated with WP2 data."]
     end
 
     subgraph "Integrated project outcome"
