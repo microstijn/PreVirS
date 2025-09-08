@@ -2,20 +2,20 @@
 
 %%{init: {'theme': 'dark', 'themeVariables': {'background': '#002060'}}}%%
 graph TD
-    subgraph "Partner contributions (Data & Experiments)"
-        A[" Field data & sampling (WP1). Collect water, WWTP, & shellfish samples from the estuarys."]
-        B[" Lab analysis & experiments (WP2 & WP3). Virus quantification (dPCR). Diversity analysis. Persistence/decay rate."]
+    subgraph "Partner contributions (Data & experiments)"
+        A["<b>Field data (WP1)</b><br>Collect estuary, WWTP,<br>& shellfish samples."]
+        B["<b>Lab analysis (WP2 & WP3)</b><br>Virus quantification, diversity,<br>& decay rate experiments."]
     end
 
-    subgraph "Our contribution (Modeling)"
-        C[" Hydrodynamic modeling (D-Flow FM) I will build the base simulation of water movement, using field data from WP1 for setup and boundary conditions."]
-        D[" Water quality modeling (DELWAQ) I simulate virus fate (decay, adsorption), using WP3 data."]
-        E[" Shellfish uptake module. Simulate virus bioaccumulation, validated against oyster data from WP2."]
+    subgraph "Our contribution (modeling)"
+        C["<b>Hydrodynamic Model</b><br>Simulate water movement<br>using WP1 data."]
+        D["<b>Water Quality Model</b><br>Simulate virus fate & transport<br>using WP3 data."]
+        E["<b>Shellfish Module</b><br>Simulate virus bioaccumulation,<br>validated with WP2 data."]
     end
 
     subgraph "Integrated project outcome"
-        F[" Calibration & validation. Model predictions are compared against WP1, WP2, and WP3."]
-        G[" Scenario simulation & outputs. Run 'what if' scenarios and generate predictive maps and risk assessments."]
+        F["<b>Calibration & validation</b><br>Compare model predictions<br>against all partner data."]
+        G["<b>Scenario simulation</b><br>Run 'what if' scenarios &<br>generate predictive maps."]
     end
 
     A --> C
