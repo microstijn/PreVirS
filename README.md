@@ -1,30 +1,27 @@
 ```mermaid
 
+%%{init: {'theme': 'dark', 'themeVariables': {'background': '#002060'}}}%%
 graph TD
-    subgraph " "
-        A["<b>Acquired data</b><br>We gather foundational data like<br>ocean floor maps (bathymetry),<br>river flows, and tide levels."]
-        B["<b>Experimental data</b><br>Crucial data from our PReVir labs<br>on how viruses behave and persist<br>in different water conditions."]
+    subgraph "Partner Contributions (Data & Experiments)"
+        A[" Field data & sampling (WP1). Collect water, WWTP, & shellfish samples from the estuarys."]
+        B[" Lab analysis & experiments (WP2 & WP3). Virus quantification (dPCR). Diversity analysis. Persistence/decay rate."]
     end
 
-    subgraph " "
-        C["<b>Hydrodynamic modeling (D-Flow FM)</b><br>This is the base simulation of water movement.<br>It predicts currents and water levels, showing<br>where particles and pathogens will be transported."]
+    subgraph "Our Contribution (Modeling)"
+        C[" Hydrodynamic modeling (D-Flow FM) I will build the base simulation of water movement, using field data from WP1 for setup and boundary conditions."]
+        D[" Water quality modeling (DELWAQ) I simulate virus fate (decay, adsorption), using WP3 data."]
+        E[" Shellfish uptake module. Simulate virus bioaccumulation, validated against oyster data from WP2."]
     end
 
-    subgraph " "
-        D["<b>Water quality modeling (DELWAQ)</b><br>This model layer simulates the 'fate' of the virus:<br>how it decays over time and sticks to sediment particles."]
-        E["<b>Custom shellfish uptake module</b><br>My primary task: a new module to simulate how shellfish<br>filter water and bioaccumulate viruses in their tissue."]
+    subgraph "Integrated Project Outcome"
+        F[" Calibration & validation. Model predictions are compared against WP1, WP2, and WP3."]
+        G[" Scenario simulation & outputs. Run 'what if' scenarios and generate predictive maps and risk assessments."]
     end
-
-    subgraph " "
-        F["<b>Calibration & validation</b><br>The critical 'reality check' step. We compare the<br>model's predictions against the experimental data<br>to fine-tune it and ensure it's accurate."]
-    end
-
-    subgraph " "
-        G["<b>Scenario simulation & outputs</b><br>Once validated, we use the model to run 'what if'<br>scenarios (e.g., storm events) and generate our final<br>outputs: predictive maps and risk assessments."]
-    end
-
 
     A --> C
+    A --> B
+    B --> D
+    B --> E
     B --> F
     C --> D
     C --> E
@@ -32,6 +29,10 @@ graph TD
     E --> F
     F --> G
 
+    style C fill:#004c99,stroke:#ccc,stroke-width:2px,color:#fff
+    style D fill:#004c99,stroke:#ccc,stroke-width:2px,color:#fff
     style E fill:#004c99,stroke:#ccc,stroke-width:2px,color:#fff
+
+
 
 ```
