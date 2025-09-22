@@ -38,15 +38,16 @@ It could also be non-linear. We will see.
 
 ### Adsorption & desorption 
 
-The interaction of viruses with total suspended solids (TSS) is modeled as a reversible kinetic process:
+The interaction of viruses with total suspended solids (TSS) could be modeled as:
 
 $\frac{dC_{\text{ads,genotype}}}{dt} = \left( k_{\text{ads,genotype}} \cdot C_{\text{free,genotype}} \cdot TSS \right) - \left( k_{\text{des,genotype}} \cdot C_{\text{ads,genotype}} \right)$
-
 
 - $C_{\text{free,genotype}}$: Free-floating virus concentration.
 - $C_{\text{ads,genotype}}$: Particle-bound virus concentration.
 - $TSS$: Total suspended solids (from hydrodynamic model).
 - $k_{\text{ads,genotype}}$, $k_{\text{des,genotype}}$: Genotype-specific adsorption/desorption rates.
+
+The idea here is to get the rate of change between adsorbed and free virus particles. For each gridcell and for each timepoint we can then determine the changes in $C_{free}$ and $C_{adsorbed}$.  
 
 
 ## Basic plans wur as a flowchart
