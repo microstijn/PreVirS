@@ -19,9 +19,9 @@ Temperature ~ decay often follows an Arrhenius equation:
 
 $k_{\text{dark}}(T) = k_{20,\text{genotype}} \cdot \theta_{\text{genotype}}^{(T - 20)}$
 
-- $k_{20,\text{genotype}}$: Reference decay rate at 20°C (from WP3 lab experiments).
+- $k_{20,\text{genotype}}$: Reference decay rate at 20°C (from WP3 lab experiments). (or at another temperature. I don't remeber exactly which temperatures were chosen). 
 
-- $\theta_{\text{genotype}}$: Temperature adjustment coefficient.
+- $\theta_{\text{genotype}}$: Temperature adjustment coefficient (derived from fitting on measured data).
 
 - Water temperature (°C), from the hydrodynamic model.
 
