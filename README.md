@@ -13,6 +13,8 @@ $k_{\text{total}} = k_{\text{dark}}(T) \cdot f(S)$
 - $k_{\text{dark}}(T)$: Temperature-dependent decay rate.
 - f(S): Factor accounting for salinity.
 
+Depending on the quality of the data we will also create separate categories for adsorbed and free virus particles. 
+
 ### Temperature and genotype-specific decay
 
 Temperature ~ decay often follows an Arrhenius equation:
