@@ -93,11 +93,23 @@ Gives a great overview and they come to:
 
 $FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
 
-- $W_{dw}^{0.75}$ allometric scaling factor. Size of oysters does not scale linearly with filtrations rate. 
+#### allometric scaling
 
-- $f(Temperature) = e^{-0.006 \cdot (T-27)^2)} \approx$ temperature ~ filtrations rate
+$W_{dw}^{0.75}$ allometric scaling factor. Size of oysters does not scale linearly with filtrations rate. 
 
-- $f(Salinity) \approx$ salinity ~ filtration rate
+#### Temperature
+$f(Temperature) = e^{-0.006 \cdot (T-27)^2)} \approx$ temperature ~ filtrations rate
+
+```julia
+function _f_temp(temperature_c::Real)
+    return exp(-0.006 * (temperature_c - 27.0)^2)
+end
+```
+
+<img width="590" height="420" alt="image" src="https://github.com/user-attachments/assets/be97d892-4701-4c67-8ef7-18408bff91d9" />
+
+#### salinity
+$f(Salinity) \approx$ salinity ~ filtration rate
 
 ```math
 \mathrm{f}(S) = \begin{cases}
@@ -107,7 +119,23 @@ $FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
 \end{cases}
 ```
 
-- $f(TSS)$
+```julia
+function _f_salinity(salinity_psu::Real)
+    if salinity_psu < 5.0
+        return 0.0
+    elseif 5.0 <= salinity_psu <= 12.0
+        return 0.0926 * (salinity_psu - 0.0139)
+    else # salinity_psu > 12.0
+        return 1.0
+    end
+end
+```
+
+<img width="607" height="418" alt="image" src="https://github.com/user-attachments/assets/a3e6dc49-e251-47e0-9ec8-f1d21afd4915" />
+
+#### TSS
+
+$f(TSS)$
   
 ```math
 \mathrm{f}(TSS) = \begin{cases}
@@ -117,6 +145,43 @@ $FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
 \end{cases}
 ```
 
+```julia
+function _f_tss(tss_mg_per_l::Real)
+    if tss_mg_per_l < 4.0
+        return 0.1
+    elseif 4.0 <= tss_mg_per_l <= 25.0
+        return 1.0
+    else # tss_mg_per_l > 25.0
+        return 10.364 * log(tss_mg_per_l)^(-2.0477)
+    end
+end
+```
+
+<img width="625" height="422" alt="image" src="https://github.com/user-attachments/assets/6d0c7e41-0d36-459d-ba9f-81b6f82ac2be" />
+
+Combined this comes to:
+
+```julia
+function calculate_filtration_rate(
+    dry_weight_g::Real,
+    temperature_c::Real,
+    salinity_psu::Real,
+    tss_mg_per_l::Real
+)
+    # Allometric scaling factor for oyster size
+    allometric_scaling = dry_weight_g^0.75
+
+    # Calculate the final filtration rate
+    fr = 0.17 *
+         allometric_scaling *
+         f_temp(temperature_c) *
+         f_salinity(salinity_psu) *
+         f_tss(tss_mg_per_l)
+
+    return fr
+end
+
+```
 
 # Basic plans WUR as a flowchart
 
