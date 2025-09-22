@@ -14,7 +14,7 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 - [ ] if the existing model by grasso & caillaud is suitable, we may use their model outputs instead of running it ourselves.
 
 ### virus decay/adsorbtion module
-- [x] Concptualize how to inegrate virus decay into water quality module. 
+- [x] Conceptualize how to integrate virus decay into water quality module. 
 - [ ] integrate the virus decay/behavior from wp3 lab data (decay in relation to t, salinity, tss, virus genotype).
 - [ ] add parameters for how viruses attach to sediment particles.
 - [ ] connect this virus tracking module to the hydrodynamic model.
@@ -110,6 +110,7 @@ end
 
 #### salinity
 $f(Salinity) \approx$ salinity ~ filtration rate
+The plot below does not look right to me! The implementation is correct, so we need to have an additional look at the original paper.
 
 ```math
 \mathrm{f}(S) = \begin{cases}
