@@ -20,7 +20,7 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 - [ ] connect this virus tracking module to the hydrodynamic model.
 
 ### shellfish uptake module
-- [ ] Conceptualize virus accumulation in oysters. 
+- [x] Conceptualize virus accumulation in oysters. 
 - [ ] Code the biological rules for how oysters filter and accumulate viruses.
 - [ ] integrate the module so it acts as a virus sink in the water model.
 - [ ] prepare it for validation against the real oyster data from wp2.
@@ -37,15 +37,14 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 
 This section presents the initial idea for simulating the decay and fate of virusses in aquatic environmenments (Loire etc) using the WP data. I think representing each genotype (`Norovirus_GI`, `Norovirus_GII.4`, etc) as a separate "substance" with its own decay and adsorption properties will give the best results. 
 
-### Total decay rate for each genotype
-Decay rate is a combination of base temperature-driven decay and a modifying salinity factor:
+All decay will be summarized as a *total decay rate* for each genotype. Depending on the quality of the data we will also create separate categories for adsorbed and free virus particles. Decay rate is a combination of base temperature-driven decay and a modifying salinity factor:
 
 $k_{\text{total}} = k_{\text{dark}}(T) \cdot f(S)$
 
 - $k_{\text{dark}}(T)$: Temperature-dependent decay rate.
 - f(S): Factor accounting for salinity.
 
-Depending on the quality of the data we will also create separate categories for adsorbed and free virus particles. 
+
 
 ### Temperature and genotype-specific decay
 
@@ -83,12 +82,45 @@ $\frac{dC_{\text{ads,genotype}}}{dt} = \left( k_{\text{ads,genotype}} \cdot C_{\
 
 The idea here is to get the rate of change between adsorbed and free virus particles. For each gridcell and for each timepoint we can then determine the changes in $C_{free}$ and $C_{adsorbed}$.  
 
+# Modelling oyster uptake, decay and excretion
 
-## Basic plans wur as a flowchart
+### Filtration/clearance rate
+
+A review of existing eastern oyster filtration rate models,
+https://doi.org/10.1016/j.ecolmodel.2014.11.023.
+
+Gives a great overview and they come to:
+
+$FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
+
+- $W_{dw}^{0.75}$ allometric scaling factor. Size of oysters does not scale linearly with filtrations rate. 
+
+- $f(Temperature) = e^{-0.006 \cdot (T-27)^2)} \approx$ temperature ~ filtrations rate
+
+- $f(Salinity) \approx$ salinity ~ filtration rate
+
+```math
+\mathrm{f}(S) = \begin{cases}
+    0 & \text{if } S < 5 \\ 
+    0.0926 \cdot (S - 0.0139) & \text{if } 5 \le S \le 12 \\ 
+    1 & \text{if } S > 12 \\ 
+\end{cases}
+```
+
+- $f(TSS)$
+  
+```math
+\mathrm{f}(TSS) = \begin{cases}
+    0.1 & \text{if } TSS < 4 mg \cdot L^{-1} \\ 
+    1 & \text{if }  4 \le TSS \le 25 mg \cdot L^{-1} \\ 
+    10.364 \cdot log(TSS)^{-2.0477} & \text{if }   TSS > 25 mg \cdot L^{-1} \\ 
+\end{cases}
+```
+
+
+# Basic plans WUR as a flowchart
 
 The initial plan as a mermaid flowchart. Not the final version. 
-
-
 
 ```mermaid
 
