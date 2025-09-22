@@ -1,7 +1,41 @@
 
-# Previr WUR modelling plans and ideas
+# PReVir project: Mechanistic modeling.
 
-## Modeling virus decay and fate
+Welcome my previr colleagues.
+
+This repository serves as the central hub for the modeling work package of our project. The goal here is to develop a predictive, mechanistic model for enteric virus concentrations in coastal shellfish. We'll be using the Delft3D FM Suite (or the Grasso paper) to couple a hydrodynamic model with custom-built modules for virus fate and shellfish bioaccumulation, all driven by the experimental data our partners (you!) are generating.
+
+On this page, I will be presenting and documenting all the code, project plans, and workflows related to this modeling effort. Please note that no raw experimental or field data will (and should not) be shared here.
+
+Your input is highly welcome. For any questions, suggestions, or contributions, please feel free to open an issue on this page or send me an email.
+
+### build the hydrodynamic model
+- [x] create/acquire the digital map for the estuaries.
+- [ ] set up the physical forces driving water movement (tides, river flow, etc.).
+- [ ] run initial simulations to ensure the model is stable before adding biology.
+- [ ] if the existing model by grasso & caillaud is suitable, we may use their model outputs instead of running it ourselves.
+
+### virus decay/adsorbtion module
+- [x] Concptualize how to inegrate virus decay into water quality module. 
+- [ ] integrate the virus decay/behavior from wp3 lab data (decay in relation to t, salinity, tss, virus genotype).
+- [ ] add parameters for how viruses attach to sediment particles.
+- [ ] connect this virus tracking module to the hydrodynamic model.
+
+### shellfish uptake module
+- [ ] Conceptualize virus accumulation in oysters. 
+- [ ] Code the biological rules for how oysters filter and accumulate viruses.
+- [ ] integrate the module so it acts as a virus sink in the water model.
+- [ ] prepare it for validation against the real oyster data from wp2.
+
+### calibrate and validate
+- [ ] align the model with measurements for both water and shellfish.
+- [ ] analyze which factors (like specific decay rates or filtration efficiency) have the most significant impact on the results.
+
+### run scenarios
+- [ ] set up and simulate various "what if" scenarios.
+- [ ] generate the final project outputs. predictive contamination maps and risk assessment charts.
+
+# Modeling virus decay and fate
 
 This section presents the initial idea for simulating the decay and fate of virusses in aquatic environmenments (Loire etc) using the WP data. I think representing each genotype (`Norovirus_GI`, `Norovirus_GII.4`, etc) as a separate "substance" with its own decay and adsorption properties will give the best results. 
 
@@ -55,6 +89,8 @@ The idea here is to get the rate of change between adsorbed and free virus parti
 ## Basic plans wur as a flowchart
 
 The initial plan as a mermaid flowchart. Not the final version. 
+
+
 
 ```mermaid
 
