@@ -3,7 +3,7 @@
 
 This repository serves as the central hub for the modeling work package of our project. The goal here is to develop a predictive, mechanistic model for enteric virus concentrations in coastal shellfish. We'll be using the Delft3D FM Suite (or the Grasso paper) to couple a hydrodynamic model with custom-built modules for virus fate and shellfish bioaccumulation, all driven by the experimental data our partners (you!) are generating.
 
-On this page, I will be presenting and documenting all the code, project plans, and workflows related to this modeling effort. Please note that no raw experimental or field data will (and should not) be shared here.
+On this page, I will be presenting and documenting all the code, project plans, and workflows related to this modeling effort. Please note that no experimental or field data will be shared here.
 
 Your input is highly welcome. For any questions, suggestions, or contributions, please feel free to open an issue on this page or send me an email.
 
