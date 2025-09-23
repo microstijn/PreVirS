@@ -46,6 +46,8 @@ $k_{\text{total}} = k_{\text{dark}}(T) \cdot f(S)$
 - $k_{\text{dark}}(T)$: Temperature-dependent decay rate.
 - f(S): Factor accounting for salinity.
 
+We will also need light attenuation. But that depends on water chemistry/virus adsorbtion/TSS/etc. Not super simple nor consistent. 
+
 ---
 
 ### Temperature and genotype-specific decay
@@ -87,6 +89,14 @@ $\frac{dC_{\text{ads,genotype}}}{dt} = \left( k_{\text{ads,genotype}} \cdot C_{\
 - $k_{\text{ads,genotype}}$, $k_{\text{des,genotype}}$: Genotype-specific adsorption/desorption rates.
 
 The idea here is to get the rate of change between adsorbed and free virus particles. For each gridcell and for each timepoint we can then determine the changes in $C_{free}$ and $C_{adsorbed}$.  
+
+---
+
+### Settling
+
+When adsorbed, the virus particles are assumed to be denser than water and they should settle on the bottom with a settling speed.
+
+
 
 ---
 
