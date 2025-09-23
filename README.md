@@ -62,6 +62,12 @@ $k_{\text{dark}}(T) = k_{20,\text{genotype}} \cdot \theta_{\text{genotype}}^{(T 
 
 - Water temperature (°C), from the hydrodynamic model.
 
+```julia
+function calculate_temp_dependent_decay(virus::VirusParameters, env::EnvironmentalConditions)::Float64
+    return virus.k20 * virus.theta^(env.temperature - 20.0)
+end
+```
+
 ---
 
 ### Salinity-dependent decay 
@@ -75,6 +81,12 @@ $f(S) = \alpha \cdot S + \beta$
 
 It could also be non-linear. We will see. 
 
+If linear:
+```julia
+function calculate_salinity_modifier(virus::VirusParameters, env::EnvironmentalConditions)::Float64
+    return 1.0 - virus.alpha * (env.salinity - env.salinity_ref)
+end
+```
 ---
 
 ### Adsorption & desorption 
