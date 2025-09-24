@@ -128,11 +128,11 @@ on the second day.
 function generate_virus_influx(duration_days::Int)
     hours = 0.0:1.0:(duration_days * 24)
 
-    # --- Influx Parameters ---
+    # Influx Parameters
     baseline_influx = 1e2  # Low, constant background level (vg/m³)
     cso_influx = 1e6       # High concentration during overflow (vg/m³)
     cso_start_hour = 30    # 6 AM on Day 2
-    cso_duration_hours = 6
+    cso_duration_hours = 12
 
     # Initialize with baseline
     influx = fill(baseline_influx, length(hours))

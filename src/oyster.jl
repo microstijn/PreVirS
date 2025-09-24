@@ -28,6 +28,10 @@ struct OysterParameters
     tss_rejection_threshold::Float64
     "TSS concentration at which rejection is maximal (gills clog). Unit: mg/L."
     tss_clogging_threshold::Float64
+    "Assimilation efficiency for free/dissolved viruses (0-1)."
+    efficiency_free::Float64
+    "Assimilation efficiency for viruses sorbed to particles (0-1)."
+    efficiency_sorbed::Float64
 end
 
 

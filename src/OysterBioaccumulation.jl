@@ -28,18 +28,13 @@ function calculate_depuration_rate(env_conds::EnvironmentalConditions, oyster_pa
     return oyster_params.k_dep_20 * oyster_params.theta_dep^(temp_c - 20.0)
 end
 
-function simulate_oyster_concentration(
-        oyster_params::OysterParameters, 
-        env_df::DataFrame, 
-        water_results::WaterSimulationResult
-    )
+function simulate_oyster_concentration(oyster_params::OysterParameters, env_df::DataFrame, water_results::WaterSimulationResult)
     c_oyster = 0.0
     oyster_results = [c_oyster]
 
     for i in 1:(nrow(env_df) - 1)
         env_row = env_df[i, :]
         dt_days = (env_df[i+1, :Hour] - env_row.Hour) / 24.0
-        
         c_dissolved = water_results.dissolved_conc[i]
         c_sorbed = water_results.sorbed_conc[i]
         
@@ -48,16 +43,28 @@ function simulate_oyster_concentration(
             env_row.TSS_kg_m3, env_row.Surface_UVB_W_m2, 1.5, 5.0
         )
         
+        # uptake
         fr_l_hr = oyster.calculate_filtration_rate(oyster_params, current_env.temperature, current_env.salinity, current_env.tss * 1000.0)
         fr_m3_day = fr_l_hr * 24.0 / 1000.0
 
+        # Calculate total virus filtered from water
+        filtered_free = fr_m3_day * c_dissolved
+        filtered_sorbed = fr_m3_day * c_sorbed
+
+        # Calculate rejection of particulate (sorbed) fraction
         f_pseudo = calculate_pseudofeces_fraction(current_env, oyster_params)
+        ingested_sorbed = filtered_sorbed * (1.0 - f_pseudo)
+        
+        # Apply final assimilation efficiencies
+        assimilated_free = filtered_free * oyster_params.efficiency_free
+        assimilated_sorbed = ingested_sorbed * oyster_params.efficiency_sorbed
+
+        total_uptake_rate = assimilated_free + assimilated_sorbed
+        
+        # Depuration Rate
         depuration_rate = calculate_depuration_rate(current_env, oyster_params)
         
-        uptake_rate_free = fr_m3_day * c_dissolved
-        uptake_rate_sorbed = fr_m3_day * c_sorbed * (1.0 - f_pseudo)
-        total_uptake_rate = uptake_rate_free + uptake_rate_sorbed
-        
+        # Update oyster concentration
         dC_oyster_dt = (total_uptake_rate / oyster_params.dry_weight_g) - (depuration_rate * c_oyster)
         c_oyster += dC_oyster_dt * dt_days
         c_oyster = max(0.0, c_oyster)

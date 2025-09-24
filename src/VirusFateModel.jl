@@ -124,7 +124,7 @@ function virus_dynamics_water!(du, u, p, t)
     adsorption_flux = virus_params.adsorption_rate * C_dissolved * env_conds.tss
     desorption_flux = virus_params.desorption_rate * C_sorbed_tss
     settling_rate_loss = virus_params.settling_velocity / env_conds.water_depth
-    decay_sorbed = k_total_water * virus_params.sorbed_protection_factor
+    decay_sorbed = k_total_water * (1.0 - virus_params.sorbed_protection_factor)
 
     # Calculate the flux of viruses settling to the bottom
     # This is the amount of virus (vg) settling per square meter per day.
