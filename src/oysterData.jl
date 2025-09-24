@@ -2,10 +2,12 @@ module oysterData
 
 using UnicodePlots
 using Dates
+using DataFrames
 using ..oyster
 
 export simulate_yearly_environment
-export plot_simulation_timeseries
+export generate_synthetic_data
+export generate_virus_influx
 
 
 """
@@ -33,7 +35,6 @@ function simulate_yearly_environment(year::Int)
     salinities_psu = zeros(num_hours)
     tss_mg_per_l = zeros(num_hours)
 
-    # --- Model Parameters ---
     # Temperature (°C)
     mean_annual_temp = 15.0
     seasonal_temp_amplitude = 10.0 # Fluctuation from the mean
@@ -49,7 +50,6 @@ function simulate_yearly_environment(year::Int)
     storm_event_probability = 0.01 # 1% chance of a storm starting each hour
     storm_duration_hours = 6
 
-    # --- Simulation Loop ---
     in_storm = 0
     for (i, ts) in enumerate(timestamps)
         day_of_year = Dates.dayofyear(ts)
@@ -82,42 +82,71 @@ function simulate_yearly_environment(year::Int)
     return timestamps, temps_c, salinities_psu, tss_mg_per_l
 end
 
+
 """
-    plot_simulation_timeseries(timestamps, temps, salinities, tsss, filtration_rates)
+    generate_synthetic_data(duration_days::Int)
 
-Plots the simulated environmental data and the resulting filtration rate over time.
+Creates a synthetic `DataFrame` for environmental conditions over a specified duration.
+Daily cycles for temperature and UVB are repeated each day.
 """
-function plot_simulation_timeseries(timestamps, temps, salinities, tsss, filtration_rates)
-    println("\n--- Plotting Yearly Simulation Results ---")
+function generate_synthetic_data(duration_days::Int)
+    hours = 0.0:1.0:(duration_days * 24)
 
-    # To make plotting faster, we can plot every 24th hour (daily average)
-    indices = 1:24:length(timestamps)
+    # (Model parameters are the same as before)
+    salinity_base = 18.0; salinity_amplitude = 7.0
+    temp_base = 15.0; temp_amplitude = 1.5; temp_peak_hour = 16.0
+    tss_base = 8.0; tss_amplitude = 7.0
+    uvb_peak = 25.0; sunrise = 6.0; sunset = 20.0
+    daylight_hours = sunset - sunrise
 
-    # Helper function to create plots
-    function create_plot(y_data, title, y_label)
-        # The `xlabels` keyword is not supported; it has been removed.
-        # The x-axis will be labeled with the start and end of the index range.
-        lineplot(
-            indices, y_data[indices],
-            title=title,
-            xlabel="Hour of the Year (sampled daily)",
-            ylabel=y_label,
-            width=80,
-            height=15
-        )
-    end
+    # Generate Time-Series Data, using modulo (%) for daily cycles
+    salinity = [salinity_base + salinity_amplitude * cos(2 * π * h / 12.4) for h in hours]
+    # Use h % 24 to repeat the daily temperature cycle
+    temperature = [temp_base - temp_amplitude * cos(2 * π * ((h % 24) - (temp_peak_hour - 12)) / 24) for h in hours]
+    tss_mg_L = [tss_base + tss_amplitude * (sin(2 * π * h / 12.4))^2 for h in hours]
+    tss_kg_m3 = tss_mg_L / 1000.0
+    # Use h % 24 to repeat the daily solar cycle
+    uvb = [(h % 24) > sunrise && (h % 24) < sunset ? uvb_peak * sin(π * ((h % 24) - sunrise) / daylight_hours) : 0.0 for h in hours]
 
-    p_temp = create_plot(temps, "Simulated Temperature", "Temp (°C)")
-    println(p_temp)
-
-    p_sal = create_plot(salinities, "Simulated Salinity", "Salinity (psu)")
-    println(p_sal)
-
-    p_tss = create_plot(tsss, "Simulated TSS", "TSS (mg/L)")
-    println(p_tss)
-
-    p_fr = create_plot(filtration_rates, "Calculated Filtration Rate", "FR (L/hr)")
-    println(p_fr)
+    env_data = DataFrame(
+        Hour = hours,
+        Temperature_C = temperature,
+        Salinity_ppt = salinity,
+        TSS_kg_m3 = tss_kg_m3,
+        Surface_UVB_W_m2 = uvb
+    )
+    return env_data
 end
+
+"""
+    generate_virus_influx(duration_days::Int)
+
+Generates a synthetic time-series of virus influx.
+Includes a low baseline and a high-concentration sewer overflow (CSO) event
+on the second day.
+"""
+function generate_virus_influx(duration_days::Int)
+    hours = 0.0:1.0:(duration_days * 24)
+
+    # --- Influx Parameters ---
+    baseline_influx = 1e2  # Low, constant background level (vg/m³)
+    cso_influx = 1e6       # High concentration during overflow (vg/m³)
+    cso_start_hour = 30    # 6 AM on Day 2
+    cso_duration_hours = 6
+
+    # Initialize with baseline
+    influx = fill(baseline_influx, length(hours))
+
+    # Add the CSO spike
+    cso_end_hour = cso_start_hour + cso_duration_hours
+    for i in eachindex(hours)
+        if hours[i] >= cso_start_hour && hours[i] < cso_end_hour
+            influx[i] = cso_influx
+        end
+    end
+    
+    return DataFrame(Hour = hours, Influx_vg_m3 = influx)
+end
+
 
 end

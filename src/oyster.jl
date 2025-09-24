@@ -2,10 +2,33 @@
 # see https://github.com/microstijn/PreVirS/ for a description.
 module oyster
 
+export OysterParameters
 export f_temp
 export f_salinity
 export f_tss
 export calculate_filtration_rate
+
+
+"""
+    OysterParameters
+
+Represents the core physical and biological parameters for an oyster.
+"""
+struct OysterParameters
+    # Physical Properties
+    "Dry weight of the oyster tissue in grams (g)."
+    dry_weight_g::Float64
+    
+    # Bioaccumulation Properties
+    "Reference depuration (elimination) rate at 20°C. Unit: \$day^{-1}\$."
+    k_dep_20::Float64
+    "Temperature adjustment coefficient for depuration. Unit: dimensionless."
+    theta_dep::Float64
+    "TSS concentration at which pseudofeces rejection begins. Unit: mg/L."
+    tss_rejection_threshold::Float64
+    "TSS concentration at which rejection is maximal (gills clog). Unit: mg/L."
+    tss_clogging_threshold::Float64
+end
 
 
 """
@@ -76,15 +99,13 @@ julia> calculate_filtration_rate(0.5, 25.0, 15.0, 10.0)
 ```
 """
 function calculate_filtration_rate(
-    dry_weight_g::Real,
+    oyster_params::OysterParameters,
     temperature_c::Real,
     salinity_psu::Real,
     tss_mg_per_l::Real
-)
-    # Allometric scaling factor for oyster size
-    allometric_scaling = dry_weight_g^0.75
+    )
+    allometric_scaling = oyster_params.dry_weight_g^0.75
 
-    # Calculate the final filtration rate by combining all factors
     fr = 0.17 *
          allometric_scaling *
          f_temp(temperature_c) *
