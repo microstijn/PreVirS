@@ -81,17 +81,7 @@ graph TD
     F_SimOyster -- Calls --> F_Filter;
 ```
 
-The final concentration of virus in the oyster is calculated in a 2-step process. 
-
-### Step 1: Simulate the environment and water column.
-
-First, the simulate_water_dynamics function is called. It takes the environmental data (e.g., from generate_synthetic_data) and the virus influx data (from generate_virus_influx) as inputs. It loops through each hour of the simulation, adding the virus influx to the water and solving the ODEs in VirusFateModel.jl to determine the concentration of dissolved (C_dissolved) and sorbed (C_sorbed) viruses in the water for that hour. The final output of this step is a complete time-series of water concentrations, packaged in a WaterSimulationResult struct.
-
-### Step 2: Simulate the oyster's response
-Next, the simulate_oyster_concentration function is called. It takes the WaterSimulationResult from Step 1 as its input. This function also loops through each hour, and for each time step, it calculates the net change in the oyster's internal virus concentration by balancing two processes:
-
-- Virus uptake: The oyster's filtration rate (FR) is calculated using the calculate_filtration_rate function from the oyster.jl module, which depends on the current temperature, salinity, and TSS. The model calculates how many free (filtered_free) and sorbed (filtered_sorbed) viruses are captured by this filtration. A fraction of the sorbed viruses is rejected as pseudofeces, a process dependent on TSS. Finally, different assimilation efficiencies (efficiency_free and efficiency_sorbed) are applied to the ingested free and sorbed viruses to get the total_uptake_rate in viral genomes per day.
-- Virus elimination (Depuration): Simultaneously, the model calculates the temperature-dependent depuration_rate. This rate is multiplied by the current virus concentration inside the oyster (c_oyster) to determine how many viral genomes are eliminated per day. The change in the oyster's concentration for that hour is then calculated as: (Total Uptake Rate / Oyster Mass) - (Depuration Rate * Current Oyster Concentration). This new value becomes the starting point for the next hour, and the process repeats for the entire simulation duration
+The simulation operates in two main stages. First, the **simulate_water_dynamics** function models the virus in the environment. Using environmental data and a virus influx schedule as inputs, it simulates the hourly concentrations of both dissolved and sorbed viruses in the water column. Second, the **simulate_oyster_concentration** function models the virus in an average oyster. It takes the water concentration results from the first step and, for each hour, calculates the net change in the oyster's internal virus level by balancing the rate of virus uptake (driven by filtration and assimilation efficiencies) against the rate of virus elimination (depuration). With the model structure now complete, we are ready for parameterization using inputs from the work packages. The next goal is to apply this calibrated model to a gridded, spatial dataset produced by the hydrodynamics. 
 
 ---
 
