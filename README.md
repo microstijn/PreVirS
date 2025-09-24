@@ -264,6 +264,8 @@ The two main terms are calculated as follows at each time step:
 * **Total elimination rate (vg/g/day):** This is the rate at which the oyster clears the virus it has already accumulated. It's the product of the temperature-dependent `depuration_rate` ($k_{dep}$) and the current internal virus concentration (`c_oyster`).
 
 The simulation uses these two rates to step forward in time, continuously updating the oyster's internal concentration based on the changing environmental conditions and water contamination levels.
+
+A reminder; $W_{dw}$ is the dry oyster weight. We are dealing with virus per gram here. 
     
 ---
 
