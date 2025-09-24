@@ -14,7 +14,7 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 - [ ] if the existing model by grasso & caillaud is suitable, we may use their model outputs instead of running it ourselves.
 
 ### virus decay/adsorbtion module
-- [x] Concptualize how to inegrate virus decay into water quality module. 
+- [x] Conceptualize how to integrate virus decay into water quality module. 
 - [ ] integrate the virus decay/behavior from wp3 lab data (decay in relation to t, salinity, tss, virus genotype).
 - [ ] add parameters for how viruses attach to sediment particles.
 - [ ] connect this virus tracking module to the hydrodynamic model.
@@ -33,6 +33,8 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 - [ ] set up and simulate various "what if" scenarios.
 - [ ] generate the final project outputs. predictive contamination maps and risk assessment charts.
 
+---
+
 # Modeling virus decay and fate
 
 This section presents the initial idea for simulating the decay and fate of virusses in aquatic environmenments (Loire etc) using the WP data. I think representing each genotype (`Norovirus_GI`, `Norovirus_GII.4`, etc) as a separate "substance" with its own decay and adsorption properties will give the best results. 
@@ -44,7 +46,9 @@ $k_{\text{total}} = k_{\text{dark}}(T) \cdot f(S)$
 - $k_{\text{dark}}(T)$: Temperature-dependent decay rate.
 - f(S): Factor accounting for salinity.
 
+We will also need light attenuation. But that depends on water chemistry/virus adsorbtion/TSS/etc. Not super simple nor consistent. 
 
+---
 
 ### Temperature and genotype-specific decay
 
@@ -58,6 +62,14 @@ $k_{\text{dark}}(T) = k_{20,\text{genotype}} \cdot \theta_{\text{genotype}}^{(T 
 
 - Water temperature (°C), from the hydrodynamic model.
 
+```julia
+function calculate_temp_dependent_decay(virus::VirusParameters, env::EnvironmentalConditions)::Float64
+    return virus.k20 * virus.theta^(env.temperature - 20.0)
+end
+```
+
+---
+
 ### Salinity-dependent decay 
 
 Salinity ~ virus persistence/decay could be represented by a linear function:
@@ -68,6 +80,14 @@ $f(S) = \alpha \cdot S + \beta$
 - $\alpha$, $\beta$: Coefficients derived from WP3 experiments.
 
 It could also be non-linear. We will see. 
+
+If linear:
+```julia
+function calculate_salinity_modifier(virus::VirusParameters, env::EnvironmentalConditions)::Float64
+    return 1.0 - virus.alpha * (env.salinity - env.salinity_ref)
+end
+```
+---
 
 ### Adsorption & desorption 
 
@@ -82,6 +102,16 @@ $\frac{dC_{\text{ads,genotype}}}{dt} = \left( k_{\text{ads,genotype}} \cdot C_{\
 
 The idea here is to get the rate of change between adsorbed and free virus particles. For each gridcell and for each timepoint we can then determine the changes in $C_{free}$ and $C_{adsorbed}$.  
 
+---
+
+### Settling
+
+When adsorbed, the virus particles are assumed to be denser than water and they should settle on the bottom with a settling speed.
+
+
+
+---
+
 # Modelling oyster uptake, decay and excretion
 
 ### Filtration/clearance rate
@@ -93,12 +123,16 @@ Gives a great overview and they come to:
 
 $FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
 
-#### allometric scaling
+---
+
+#### Allometric scaling
 
 $W_{dw}^{0.75}$ allometric scaling factor. Size of oysters does not scale linearly with filtrations rate. 
 
+---
+
 #### Temperature
-$f(Temperature) = e^{-0.006 \cdot (T-27)^2)} \approx$ temperature ~ filtrations rate
+
 
 ```julia
 function _f_temp(temperature_c::Real)
@@ -108,8 +142,11 @@ end
 
 <img width="590" height="420" alt="image" src="https://github.com/user-attachments/assets/be97d892-4701-4c67-8ef7-18408bff91d9" />
 
+---
+
 #### salinity
-$f(Salinity) \approx$ salinity ~ filtration rate
+
+The plot below does not look right to me! The implementation is correct, so we need to have an additional look at the original paper.
 
 ```math
 \mathrm{f}(S) = \begin{cases}
@@ -133,10 +170,10 @@ end
 
 <img width="607" height="418" alt="image" src="https://github.com/user-attachments/assets/a3e6dc49-e251-47e0-9ec8-f1d21afd4915" />
 
+---
+
 #### TSS
 
-$f(TSS)$
-  
 ```math
 \mathrm{f}(TSS) = \begin{cases}
     0.1 & \text{if } TSS < 4 mg \cdot L^{-1} \\ 
@@ -158,6 +195,8 @@ end
 ```
 
 <img width="625" height="422" alt="image" src="https://github.com/user-attachments/assets/6d0c7e41-0d36-459d-ba9f-81b6f82ac2be" />
+
+---
 
 Combined this comes to:
 
@@ -182,6 +221,9 @@ function calculate_filtration_rate(
 end
 
 ```
+
+---
+
 
 # Basic plans WUR as a flowchart
 
