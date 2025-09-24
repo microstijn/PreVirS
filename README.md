@@ -15,14 +15,15 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 
 ### virus decay/adsorbtion module
 - [x] Conceptualize how to integrate virus decay into water quality module. 
-- [ ] integrate the virus decay/behavior from wp3 lab data (decay in relation to t, salinity, tss, virus genotype).
+- [x] integrate the virus decay/behavior
+- [ ] Adapt wp3 lab data (decay in relation to t, salinity, tss, virus genotype).
 - [ ] add parameters for how viruses attach to sediment particles.
 - [ ] connect this virus tracking module to the hydrodynamic model.
 
 ### shellfish uptake module
 - [x] Conceptualize virus accumulation in oysters. 
-- [ ] Code the biological rules for how oysters filter and accumulate viruses.
-- [ ] integrate the module so it acts as a virus sink in the water model.
+- [x] Code the biological rules for how oysters filter and accumulate viruses.
+- [x] integrate the module so it acts as a virus sink in the water model. The uptake compared to ambient is negliable. 
 - [ ] prepare it for validation against the real oyster data from wp2.
 
 ### calibrate and validate
@@ -35,194 +36,339 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 
 ---
 
-# Modeling virus decay and fate
+# Current implementation
 
-This section presents the initial idea for simulating the decay and fate of virusses in aquatic environmenments (Loire etc) using the WP data. I think representing each genotype (`Norovirus_GI`, `Norovirus_GII.4`, etc) as a separate "substance" with its own decay and adsorption properties will give the best results. 
+```mermaid
+graph TD
+    %% Define subgraphs for each module
+    subgraph User Script [User Script / Pluto Notebook]
+        direction LR
+        Start("1. Define Parameters & Settings") --> CallGenData("2. Generate Input Data");
+        CallGenData --> CallWaterSim("3. Simulate Virus in Water");
+        CallWaterSim --> CallOysterSim("4. Simulate Oyster Uptake");
+        CallOysterSim --> Plot("5. Plot Results");
+    end
 
-All decay will be summarized as a *total decay rate* for each genotype. Depending on the quality of the data we will also create separate categories for adsorbed and free virus particles. Decay rate is a combination of base temperature-driven decay and a modifying salinity factor:
+    subgraph oysterData.jl
+        F_GenEnv["generate_synthetic_data()"]
+        F_GenInflux["generate_virus_influx()"]
+    end
 
-$k_{\text{total}} = k_{\text{dark}}(T) \cdot f(S)$
+    subgraph VirusFateModel.jl
+        S_Result[WaterSimulationResult Struct]
+        F_SimWater["simulate_water_dynamics()"]
+    end
+    
+    subgraph oyster.jl
+        S_Oyster[OysterParameters Struct]
+        F_Filter["calculate_filtration_rate()"]
+    end
 
-- $k_{\text{dark}}(T)$: Temperature-dependent decay rate.
-- f(S): Factor accounting for salinity.
+    subgraph OysterBioaccumulation.jl
+        F_SimOyster["simulate_oyster_concentration()"]
+    end
 
-We will also need light attenuation. But that depends on water chemistry/virus adsorbtion/TSS/etc. Not super simple nor consistent. 
+    %% Define the relationships and data flow
+    CallGenData -- Calls --> F_GenEnv;
+    CallGenData -- Calls --> F_GenInflux;
+    
+    CallWaterSim -- Calls --> F_SimWater;
+    F_SimWater -- Produces --> S_Result;
 
----
-
-### Temperature and genotype-specific decay
-
-Temperature ~ decay often follows an Arrhenius equation:
-
-$k_{\text{dark}}(T) = k_{20,\text{genotype}} \cdot \theta_{\text{genotype}}^{(T - 20)}$
-
-- $k_{20,\text{genotype}}$: Reference decay rate at 20°C (from WP3 lab experiments). (or at another temperature. I don't remeber exactly which temperatures were chosen). 
-
-- $\theta_{\text{genotype}}$: Temperature adjustment coefficient (derived from fitting on measured data).
-
-- Water temperature (°C), from the hydrodynamic model.
-
-```julia
-function calculate_temp_dependent_decay(virus::VirusParameters, env::EnvironmentalConditions)::Float64
-    return virus.k20 * virus.theta^(env.temperature - 20.0)
-end
+    CallOysterSim -- Calls --> F_SimOyster;
+    F_SimOyster -- Uses Data From --> S_Result;
+    F_SimOyster -- Uses Parameters From --> S_Oyster;
+    F_SimOyster -- Calls --> F_Filter;
 ```
 
+The final concentration of virus in the oyster is calculated in a 2-step process. 
+
+### Step 1: Simulate the environment and water column.
+
+First, the simulate_water_dynamics function is called. It takes the environmental data (e.g., from generate_synthetic_data) and the virus influx data (from generate_virus_influx) as inputs. It loops through each hour of the simulation, adding the virus influx to the water and solving the ODEs in VirusFateModel.jl to determine the concentration of dissolved (C_dissolved) and sorbed (C_sorbed) viruses in the water for that hour. The final output of this step is a complete time-series of water concentrations, packaged in a WaterSimulationResult struct.
+
+### Step 2: Simulate the oyster's response
+Next, the simulate_oyster_concentration function is called. It takes the WaterSimulationResult from Step 1 as its input. This function also loops through each hour, and for each time step, it calculates the net change in the oyster's internal virus concentration by balancing two processes:
+
+- Virus uptake: The oyster's filtration rate (FR) is calculated using the calculate_filtration_rate function from the oyster.jl module, which depends on the current temperature, salinity, and TSS. The model calculates how many free (filtered_free) and sorbed (filtered_sorbed) viruses are captured by this filtration. A fraction of the sorbed viruses is rejected as pseudofeces, a process dependent on TSS. Finally, different assimilation efficiencies (efficiency_free and efficiency_sorbed) are applied to the ingested free and sorbed viruses to get the total_uptake_rate in viral genomes per day.
+- Virus elimination (Depuration): Simultaneously, the model calculates the temperature-dependent depuration_rate. This rate is multiplied by the current virus concentration inside the oyster (c_oyster) to determine how many viral genomes are eliminated per day. The change in the oyster's concentration for that hour is then calculated as: (Total Uptake Rate / Oyster Mass) - (Depuration Rate * Current Oyster Concentration). This new value becomes the starting point for the next hour, and the process repeats for the entire simulation duration
+
 ---
 
-### Salinity-dependent decay 
+# The maths driving the simulation
 
-Salinity ~ virus persistence/decay could be represented by a linear function:
+## 1. virus fate and transport (`VirusFateModel.jl`)
 
-$f(S) = \alpha \cdot S + \beta$
+This module models how virus concentrations change in the water column due to decay, sorption, and settling.
 
-- $S$: Local salinity (from hydrodynamic model).
-- $\alpha$, $\beta$: Coefficients derived from WP3 experiments.
+### Virus decay in water
 
-It could also be non-linear. We will see. 
+The total decay rate for free-floating viruses in the water, $k_{total}$, is the sum of a background rate and a rate due to UV light. The background rate is dependent on temperature.
 
-If linear:
-```julia
-function calculate_salinity_modifier(virus::VirusParameters, env::EnvironmentalConditions)::Float64
-    return 1.0 - virus.alpha * (env.salinity - env.salinity_ref)
-end
+* **Temperature-dependent decay (**$k_{temp}$**):** A modified Arrhenius equation calculates the decay rate based on temperature.
+  
+
+```math
+k_{temp}(T) = k_{20} \cdot \theta^{(T-20)}
 ```
+
+where $k_{20}$ is the reference decay rate at 20°C, $\theta$ is the temperature coefficient, and $T$ is the water temperature in °C.
+
+* **UV Light-Dependent Decay (**$k_{UV}$**):** The decay from UV light is a product of a light coefficient and the depth-averaged UVB intensity.
+  
+
+```math
+k_{UV} = k_I \cdot \bar{I}_{UVB}
+```
+
+```math
+\bar{I}_{UVB} = I_{UVB,0} \cdot \frac{1 - e^{-K_{ext} \cdot H}}{K_{ext} \cdot H}
+```
+
+where $k_I$ is the light-dependent decay coefficient
+
+$\bar{I}_{UVB}$ is the average UVB intensity over the water column
+
+$I_{UVB,0}$ is the surface intensity
+
+$K_{ext}$ is the light extinction coefficient
+
+$H$ is the water depth.
+
+
+* **Decay of sorbed virus:** Viruses attached to particles are protected. Their decay rate is reduced by a `sorbed_protection_factor`.
+  
+```math
+k_{sorbed} = k_{total} \cdot (1 - P_{sorbed})
+```
+
+where $P_{sorbed}$ is the sorbed protection factor.
+
+### Differential equations for water column
+
+The simulation solves a system of ordinary differential equations (`virus_dynamics_water!`) to find the concentration of dissolved virus ($C_{dissolved}$), sorbed virus ($C_{sorbed}$), and the cumulative settled amount ($C_{settled}$) over time.
+
+```math
+\frac{dC_{dissolved}}{dt} = -k_{total} \cdot C_{dissolved} - k_{ads} \cdot C_{dissolved} \cdot C_{TSS} + k_{des} \cdot C_{sorbed}
+```
+
+```math
+\frac{dC_{sorbed}}{dt} = -k_{sorbed} \cdot C_{sorbed} + k_{ads} \cdot C_{dissolved} \cdot C_{TSS} - k_{des} \cdot C_{sorbed} - \frac{v_{settle}}{H} \cdot C_{sorbed}
+```
+
+```math
+\frac{dC_{settled}}{dt} = v_{settle} \cdot C_{sorbed}
+```
+
+where $k_{ads}$ and $k_{des}$ are the adsorption and desorption rates, $C_{TSS}$ is the concentration of suspended solids, and $v_{settle}$ is the settling velocity.
+
 ---
 
-### Adsorption & desorption 
+## 2. Oyster biology (`oyster.jl`)
 
-The interaction of viruses with total suspended solids (TSS) could be modeled as:
+This module defines the oyster's filtration rate based on its size and environmental conditions. Largely based on:
 
-$\frac{dC_{\text{ads,genotype}}}{dt} = \left( k_{\text{ads,genotype}} \cdot C_{\text{free,genotype}} \cdot TSS \right) - \left( k_{\text{des,genotype}} \cdot C_{\text{ads,genotype}} \right)$
-
-- $C_{\text{free,genotype}}$: Free-floating virus concentration.
-- $C_{\text{ads,genotype}}$: Particle-bound virus concentration.
-- $TSS$: Total suspended solids (from hydrodynamic model).
-- $k_{\text{ads,genotype}}$, $k_{\text{des,genotype}}$: Genotype-specific adsorption/desorption rates.
-
-The idea here is to get the rate of change between adsorbed and free virus particles. For each gridcell and for each timepoint we can then determine the changes in $C_{free}$ and $C_{adsorbed}$.  
-
----
-
-### Settling
-
-When adsorbed, the virus particles are assumed to be denser than water and they should settle on the bottom with a settling speed.
-
-
-
----
-
-# Modelling oyster uptake, decay and excretion
-
-### Filtration/clearance rate
-
-A review of existing eastern oyster filtration rate models,
 https://doi.org/10.1016/j.ecolmodel.2014.11.023.
 
-Gives a great overview and they come to:
+### Allometric Scaling
 
-$FR_{(i)} = 0.17 \cdot W_{dw}^{0.75} \cdot f(T) * f(S) * f(TSS)$
-
----
-
-#### Allometric scaling
-
-$W_{dw}^{0.75}$ allometric scaling factor. Size of oysters does not scale linearly with filtrations rate. 
-
----
-
-#### Temperature
-
-
-```julia
-function _f_temp(temperature_c::Real)
-    return exp(-0.006 * (temperature_c - 27.0)^2)
-end
-```
-
-<img width="590" height="420" alt="image" src="https://github.com/user-attachments/assets/be97d892-4701-4c67-8ef7-18408bff91d9" />
-
----
-
-#### salinity
-
-The plot below does not look right to me! The implementation is correct, so we need to have an additional look at the original paper.
+An oyster's base filtration rate is scaled by its dry weight ($W_{dw}$).
 
 ```math
-\mathrm{f}(S) = \begin{cases}
-    0 & \text{if } S < 5 \\ 
-    0.0926 \cdot (S - 0.0139) & \text{if } 5 \le S \le 12 \\ 
-    1 & \text{if } S > 12 \\ 
-\end{cases}
+\text{Scaling Factor} = W_{dw}^{0.75}
 ```
 
-```julia
-function _f_salinity(salinity_psu::Real)
-    if salinity_psu < 5.0
-        return 0.0
-    elseif 5.0 <= salinity_psu <= 12.0
-        return 0.0926 * (salinity_psu - 0.0139)
-    else # salinity_psu > 12.0
-        return 1.0
-    end
-end
+### Environmental limitation factors
+
+The base rate is modified by dimensionless factors for temperature ( $f(T)$ ), salinity ( $f(S)$ ), and total suspended solids ( $f(TSS)$ ).
+
+* **Temperature:**
+  
+```math
+f(T) = e^{-0.006 \cdot (T - 27.0)^2}
 ```
 
-<img width="607" height="418" alt="image" src="https://github.com/user-attachments/assets/a3e6dc49-e251-47e0-9ec8-f1d21afd4915" />
-
----
-
-#### TSS
+* **Salinity:** A piecewise function based on salinity ($S$) in psu.
 
 ```math
-\mathrm{f}(TSS) = \begin{cases}
-    0.1 & \text{if } TSS < 4 mg \cdot L^{-1} \\ 
-    1 & \text{if }  4 \le TSS \le 25 mg \cdot L^{-1} \\ 
-    10.364 \cdot log(TSS)^{-2.0477} & \text{if }   TSS > 25 mg \cdot L^{-1} \\ 
-\end{cases}
+f(S) = \begin{cases}
+  0.0 & \text{if } S < 5.0 \\
+  0.0926 \cdot (S - 0.0139) & \text{if } 5.0 \leq S \leq 12.0 \\
+  1.0 & \text{if } S > 12.0
+  \end{cases}
 ```
 
-```julia
-function _f_tss(tss_mg_per_l::Real)
-    if tss_mg_per_l < 4.0
-        return 0.1
-    elseif 4.0 <= tss_mg_per_l <= 25.0
-        return 1.0
-    else # tss_mg_per_l > 25.0
-        return 10.364 * log(tss_mg_per_l)^(-2.0477)
-    end
-end
+* **TSS:** A piecewise function based on TSS in mg/L.
+
+```math
+f(TSS) = \begin{cases}
+  0.1 & \text{if } TSS < 4.0 \\
+  1.0 & \text{if } 4.0 \leq TSS \leq 25.0 \\
+  10.364 \cdot \ln(TSS) - 2.0477 & \text{if } TSS > 25.0
+  \end{cases}
 ```
 
-<img width="625" height="422" alt="image" src="https://github.com/user-attachments/assets/6d0c7e41-0d36-459d-ba9f-81b6f82ac2be" />
+### Total filtration rate (FR)
+
+The final rate combines all factors.
+
+```math
+FR \text{ (L/hr)} = 0.17 \cdot \text{Scaling Factor} \cdot f(T) \cdot f(S) \cdot f(TSS)
+```
 
 ---
 
-Combined this comes to:
+## 3. Oyster bioaccumulation (`OysterBioaccumulation.jl`)
+
+This module calculates the concentration of virus inside the oyster.
+
+### Pseudofeces rejection (**$f_{pseudo}$**)
+
+The fraction of filtered particles rejected by the oyster is modeled as a linear ramp between a lower ($TSS_{reject}$) and upper ($TSS_{clog}$) threshold for suspended solids.
+
+```math
+f_{pseudo} = \frac{TSS - TSS_{reject}}{TSS_{clog} - TSS_{reject}} \quad (\text{for } TSS_{reject} < TSS < TSS_{clog})
+```
+
+### Depuration rate (**$k_{dep}$**)
+
+The rate at which the oyster eliminates viruses is temperature-dependent.
+
+```math
+k_{dep}(T) = k_{dep,20} \cdot \theta_{dep}^{(T-20)}
+```
+
+where $k_{dep,20}$ is the depuration rate at 20°C and $\theta_{dep}$ is its temperature coefficient.
+
+---
+
+### How the final oyster concentration is calculated
+
+The concentration of virus in the oyster ($C_{oyster}$) is calculated in the `simulate_oyster_concentration` function by looping through each hour and solving for the net change based on the processes of Uptake and Elimination. The governing differential equation is:
+
+```math
+\frac{dC_{oyster}}{dt} = \frac{\text{Total Uptake Rate}}{W_{dw}} - k_{dep} \cdot C_{oyster}
+```
+
+The two main terms are calculated as follows at each time step:
+
+* **Total uptake rate (vg/day):** This is the total number of viruses assimilated by the oyster per day. It's the sum of assimilated free and sorbed viruses.
+
+  1. **Filtration:** The total amount of free and sorbed virus captured is calculated:
+
+     * `filtered_free` = $FR \cdot C_{dissolved}$
+
+     * `filtered_sorbed` = $FR \cdot C_{sorbed}$
+
+  2. **Rejection:** The particulate (sorbed) fraction is reduced by the pseudofeces rejection factor:
+
+     * `ingested_sorbed` = `filtered_sorbed` $\cdot (1 - f_{pseudo})$
+
+  3. **Assimilation:** Final assimilation efficiencies ($\epsilon_{free}$, $\epsilon_{sorbed}$) are applied to the ingested amounts.
+
+     * `assimilated_free` = `filtered_free` $\cdot \epsilon_{free}$
+
+     * `assimilated_sorbed` = `ingested_sorbed` $\cdot \epsilon_{sorbed}$
+       The **Total uptake rate** is the sum of `assimilated_free` and `assimilated_sorbed`.
+
+* **Total elimination rate (vg/g/day):** This is the rate at which the oyster clears the virus it has already accumulated. It's the product of the temperature-dependent `depuration_rate` ($k_{dep}$) and the current internal virus concentration (`c_oyster`).
+
+The simulation uses these two rates to step forward in time, continuously updating the oyster's internal concentration based on the changing environmental conditions and water contamination levels.
+    
+---
+
+# An example simulation
+
+When I combine all aspects, we can model virus accumulation in oysters in a synthetic dataset. The synthetic dataset is generated using:
 
 ```julia
-function calculate_filtration_rate(
-    dry_weight_g::Real,
-    temperature_c::Real,
-    salinity_psu::Real,
-    tss_mg_per_l::Real
+sim_days = 12
+env_df = generate_synthetic_data(sim_days)
+
+289×5 DataFrame
+ Row │ Hour     Temperature_C  Salinity_ppt  TSS_kg_m3   Surface_UVB_W_m2 
+     │ Float64  Float64        Float64       Float64     Float64
+─────┼────────────────────────────────────────────────────────────────────
+   1 │     0.0        14.25         25.0     0.008                0.0
+   2 │     1.0        13.9393       24.1204  0.00964863           0.0
+  ⋮  │    ⋮           ⋮             ⋮            ⋮              ⋮
+ 288 │   287.0        14.6118       22.2847  0.0123773            0.0
+ 289 │   288.0        14.25         19.06    0.0148395            0.0
+                                                          280 rows omitted
+```
+
+Which generates synthetic data with 
+- a daily temperature cycle (a cosine wave)
+- tidal salinity cycle (cosine wave with a ~12.4 hr period)
+- tidal TSS cycle (modeled with a squared sine wave to produce two peaks per cycle).
+- daily solar radiation cycle modeled as a clipped sine wave, active only during daylight hours.
+
+Then I need influx data. For this example this function also generates a spike caused by WTTP overflow/bypas. ```julia influx_df = generate_virus_influx(sim_days) ```
+
+Then I define virus and shellfish properties:
+
+```julia
+virus_params = VirusParameters(
+    0.23,       # k20: Reference decay rate at 20°C
+    1.076,      # theta: Temperature adjustment coefficient for decay
+    0.0,        # alpha: Salinity effect coefficient
+    0.05,       # k_I: UV light decay coefficient
+    1.0,        # adsorption_rate: Rate of attachment to particles
+    0.2,        # desorption_rate: Rate of detachment from particles
+    0.05,       # settling_velocity: Sinking speed of sorbed virus [m/day] 
+    0.5         # sorbed_protection_factor: (50%) reduction in decay when sorbed 
 )
-    # Allometric scaling factor for oyster size
-    allometric_scaling = dry_weight_g^0.75
 
-    # Calculate the final filtration rate
-    fr = 0.17 *
-         allometric_scaling *
-         f_temp(temperature_c) *
-         f_salinity(salinity_psu) *
-         f_tss(tss_mg_per_l)
-
-    return fr
-end
-
+oyster_params = OysterParameters(
+    1.0,        # dry_weight_g: Dry weight of the oyster in grams 
+    0.107,      # k_dep_20: Depuration (elimination) rate at 20°C 
+    1.055,      # theta_dep: Temperature coefficient for depuration 
+    100.0,      # tss_rejection_threshold: TSS level to start rejecting particles [mg/L]
+    200.0,      # tss_clogging_threshold: TSS level for maximum particle rejection [mg/L]
+    0.5,        # efficiency_free: (50%) uptake efficiency for free viruses
+    1           # efficiency_sorbed: (100%) uptake efficiency for sorbed viruses 
+)
 ```
 
----
+Then I can run the composite model with using the synthetic data and the structs.
+
+```julia
+water_sim = simulate_water_dynamics(virus_params, env_df, influx_df, [100, 0.0, 0.0]);
+oyster_sim = simulate_oyster_concentration(oyster_params, env_df, water_sim)
+```
+
+We can then visualize the results. 
+
+```julia
+begin
+    p_water = lineplot(
+        water_sim.time,
+        water_sim.dissolved_conc,
+        name="Virus (dissolved)",
+        title="Virus in Water Column",
+        xlabel="Time (hours)",
+        ylabel="Conc (vg/m³)",
+        yscale=:log10,
+        width=70,
+        height=15,
+        ylim = (10^0, 10^6),
+        canvas = BrailleCanvas
+    )
+
+    lineplot!(p_water, water_sim.time, water_sim.sorbed_conc; name = "Virus (sorbed)")
+    #lineplot!(p_water, water_sim.time, water_sim.dissolved_conc; name = "Virus (free)")
+    lineplot!(p_water, water_sim.time, water_sim.settled_conc; name = "Virus (settled)")
+
+    lineplot!(
+        p_water,
+        water_sim.time,
+        oyster_sim;
+        name ="Virus in oyster"
+    )
+end
+```
+
+<img width="1042" height="487" alt="image" src="https://github.com/user-attachments/assets/bd3d0c5f-2d24-4160-b6c7-7755af155be9" />
 
 
 # Basic plans WUR as a flowchart
