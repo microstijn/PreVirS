@@ -41,7 +41,7 @@ Your input is highly welcome. For any questions, suggestions, or contributions, 
 ```mermaid
 graph TD
     %% Define subgraphs for each module
-    subgraph User Script [User Script / Pluto Notebook]
+    subgraph User Script [User script / pluto notebook]
         direction LR
         Start("1. Define Parameters & Settings") --> CallGenData("2. Generate Input Data");
         CallGenData --> CallWaterSim("3. Simulate Virus in Water");
