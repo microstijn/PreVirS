@@ -117,8 +117,8 @@ function virus_dynamics_water!(du, u, p, t)
     virus_params, env_conds = p
 
     # Calculate total decay rate in water
-    k_background = virus_params.k20 * virus_params.theta^(env_conds.temperature - 20.0)
-    k_total_water = k_background + virus_params.k_I * env_conds.surface_uvb
+    k_background =  calculate_temp_dependent_decay(virus_params, env_conds) * calculate_salinity_modifier(virus_params, env_conds)
+    k_total_water = k_background + calculate_k_uv_avg(virus_params, env_conds)
 
     # Fluxes
     adsorption_flux = virus_params.adsorption_rate * C_dissolved * env_conds.tss

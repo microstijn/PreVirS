@@ -3,6 +3,7 @@ module PreVirS
     include("oysterData.jl")
     include("VirusFateModel.jl")
     include("OysterBioaccumulation.jl")
+    include("OysterTests.jl")
 
     using .oyster
     export OysterParameters
@@ -25,5 +26,8 @@ module PreVirS
 
     using .OysterBioaccumulation
     export simulate_oyster_concentration # main sim oyster accumulation
+
+    using .OysterTests
+    export run_simulation_tests
 
 end

@@ -94,8 +94,8 @@ function generate_synthetic_data(duration_days::Int)
 
     # (Model parameters are the same as before)
     salinity_base = 18.0; salinity_amplitude = 7.0
-    temp_base = 15.0; temp_amplitude = 1.5; temp_peak_hour = 16.0
-    tss_base = 8.0; tss_amplitude = 7.0
+    temp_base = 15.0; temp_amplitude = 6.5; temp_peak_hour = 16.0
+    tss_base = 10.0; tss_amplitude = 9.0
     uvb_peak = 25.0; sunrise = 6.0; sunset = 20.0
     daylight_hours = sunset - sunrise
 
@@ -125,26 +125,22 @@ Generates a synthetic time-series of virus influx.
 Includes a low baseline and a high-concentration sewer overflow (CSO) event
 on the second day.
 """
-function generate_virus_influx(duration_days::Int)
+function generate_virus_influx(duration_days::Int, cso_influx, cso_start_hour, cso_duration_hours, baseline_influx)
     hours = 0.0:1.0:(duration_days * 24)
-
-    # Influx Parameters
-    baseline_influx = 1e2  # Low, constant background level (vg/m³)
-    cso_influx = 1e6       # High concentration during overflow (vg/m³)
-    cso_start_hour = 30    # 6 AM on Day 2
-    cso_duration_hours = 12
 
     # Initialize with baseline
     influx = fill(baseline_influx, length(hours))
 
     # Add the CSO spike
-    cso_end_hour = cso_start_hour + cso_duration_hours
-    for i in eachindex(hours)
-        if hours[i] >= cso_start_hour && hours[i] < cso_end_hour
-            influx[i] = cso_influx
-        end
+    for (s, d, amp) in zip(cso_start_hour, cso_duration_hours, cso_influx)
+         cso_end_hour = s + d
+         for i in eachindex(hours)
+             if hours[i] >= s && hours[i] < cso_end_hour
+                 influx[i] = influx[i] + amp
+             end
+         end
     end
-    
+
     return DataFrame(Hour = hours, Influx_vg_m3 = influx)
 end
 
