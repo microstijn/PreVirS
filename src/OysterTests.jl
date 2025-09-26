@@ -37,7 +37,6 @@ function run_simulation_tests()
             p_mod_k20 = @set p_virus_base.k20 = 0.8; res_mod_k20 = simulate_water_dynamics(p_mod_k20, env_df_short, influx_df_short, initial_cond)
             @test last(res_mod_k20.dissolved_conc) + last(res_mod_k20.sorbed_conc) < final_total_base
 
-            # --- CORRECTED TEST LOGIC for theta ---
             # Test theta: Higher temp sensitivity + COLD day (<20C) -> MORE virus (slower decay)
             p_mod = @set p_virus_base.theta = 1.1
             res_mod = simulate_water_dynamics(p_mod, env_df_short, influx_df_short, initial_cond)
@@ -47,8 +46,7 @@ function run_simulation_tests()
             p_mod = @set p_virus_base.alpha = 0.05
             res_mod = simulate_water_dynamics(p_mod, env_df_short, influx_df_short, initial_cond)
             @test last(res_mod.dissolved_conc) + last(res_mod.sorbed_conc) < final_total_base
-
-            # ... other tests ...
+            
              p_mod_kI = @set p_virus_base.k_I = 0.2; res_mod_kI = simulate_water_dynamics(p_mod_kI, env_df_short, influx_df_short, initial_cond); @test last(res_mod_kI.dissolved_conc) + last(res_mod_kI.sorbed_conc) < final_total_base
              p_mod_ads = @set p_virus_base.adsorption_rate = 5.0; res_mod_ads = simulate_water_dynamics(p_mod_ads, env_df_short, influx_df_short, initial_cond); @test last(res_mod_ads.sorbed_conc) > final_sorbed_base
              p_mod_des = @set p_virus_base.desorption_rate = 0.8; res_mod_des = simulate_water_dynamics(p_mod_des, env_df_short, influx_df_short, initial_cond); @test last(res_mod_des.sorbed_conc) < final_sorbed_base
@@ -71,8 +69,7 @@ function run_simulation_tests()
             p_mod = @set p_oyster_base.tss_rejection_threshold = 5.0 # Lower than baseline TSS
             res_mod = simulate_oyster_concentration(p_mod, env_df_short, res_base_water)
             @test last(res_mod) < final_oyster_base
-            
-            # --- CORRECTED TEST SETUP for tss_clogging_threshold ---
+            -
             # Test tss_clogging_threshold: Lower threshold -> LESS virus in oyster (clogs earlier)
             # Must also lower rejection_threshold to activate the mechanism
             p_mod = @set p_oyster_base.tss_rejection_threshold = 5.0
@@ -80,7 +77,6 @@ function run_simulation_tests()
             res_mod = simulate_oyster_concentration(p_mod, env_df_short, res_base_water)
             @test last(res_mod) < final_oyster_base
             
-            # ... other tests ...
              p_mod_eff = @set p_oyster_base.efficiency_free = 0.5; res_mod_eff = simulate_oyster_concentration(p_mod_eff, env_df_short, res_base_water); @test last(res_mod_eff) > final_oyster_base
              p_mod_efs = @set p_oyster_base.efficiency_sorbed = 0.95; res_mod_efs = simulate_oyster_concentration(p_mod_efs, env_df_short, res_base_water); @test last(res_mod_efs) > final_oyster_base
         end
